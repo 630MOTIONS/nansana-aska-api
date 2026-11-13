@@ -34,3 +34,134 @@ model Enquiry {
 
   @@index([createdAt])
 }
+
+enum Squad {
+  men
+  women
+}
+
+enum MatchStatus {
+  scheduled
+  live
+  final
+  postponed
+  cancelled
+}
+
+// A team in a competition: Nansana ASKA's men and women are separate teams.
+// `slug` is also the key the website uses to find a team's logo.
+model Team {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  squad     Squad
+  isOurs    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  competitions CompetitionTeam[]
+  homeMatches  Match[]           @relation("HomeMatches")
+  awayMatches  Match[]           @relation("AwayMatches")
+  adjustments  PointsAdjustment[]
+}
+
+// One competition in one season, for example "FAU Futsal Super League 2026/27".
+model Competition {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  season        String
+  squad         Squad
+  pointsForWin  Int      @default(3)
+  pointsForDraw Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  teams       CompetitionTeam[]
+  matches     Match[]
+  adjustments PointsAdjustment[]
+}
+
+// Which teams are in a competition, so the table lists every team from
+// matchday zero, even before they have played.
+model CompetitionTeam {
+  competitionId String
+  teamId        String
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, teamId])
+}
+
+model Match {
+  id            String      @id @default(cuid())
+  slug          String      @unique
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  stage         String // for example "Matchday 14" or "Quarter-final"
+  matchday      Int?
+  // Stored in UTC. Uganda is UTC+3 all year, so the website shows it as EAT.
+  kickoffAt     DateTime
+  venue         String?
+  homeTeamId    String
+  awayTeamId    String
+  homeTeam      Team        @relation("HomeMatches", fields: [homeTeamId], references: [id])
+  awayTeam      Team        @relation("AwayMatches", fields: [awayTeamId], references: [id])
+  status        MatchStatus @default(scheduled)
+  homeScore     Int?
+  awayScore     Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([competitionId, kickoffAt])
+  @@index([kickoffAt])
+}
+
+// Points added or removed by the league outside normal results, for example a
+// deduction. Rare, but real tables need it.
+model PointsAdjustment {
+  id            String      @id @default(cuid())
+  competitionId String
+  teamId        String
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  points        Int
+  reason        String
+  createdAt     DateTime    @default(now())
+
+  @@index([competitionId])
+}
+
+enum Role {
+  admin
+  editor
+}
+
+// People who can sign in to the admin. There is no public sign-up.
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique // always stored in lower case
+  name         String
+  passwordHash String
+  role         Role      @default(editor)
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions Session[]
+}
+
+// Only a SHA-256 hash of the session token is stored, never the token itself.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
