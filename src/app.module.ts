@@ -1,11 +1,13 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AdminModule } from "./admin/admin.module.js";
+import { ArticlesModule } from "./articles/articles.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { CompetitionsModule } from "./competitions/competitions.module.js";
 import { EnquiriesModule } from "./enquiries/enquiries.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { MatchesModule } from "./matches/matches.module.js";
+import { MediaModule } from "./media/media.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { TeamsModule } from "./teams/teams.module.js";
 
@@ -20,6 +22,8 @@ import { TeamsModule } from "./teams/teams.module.js";
     CompetitionsModule,
     MatchesModule,
     TeamsModule,
+    MediaModule,
+    ArticlesModule,
   ],
 })
 export class AppModule {}

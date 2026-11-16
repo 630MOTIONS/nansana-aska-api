@@ -171,3 +171,50 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
 }
+
+// A photo, resized and converted to WebP on upload. Used as an article cover
+// or inside an article's text.
+model MediaImage {
+  id          String   @id @default(cuid())
+  contentType String
+  data        Bytes
+  size        Int
+  width       Int
+  height      Int
+  createdAt   DateTime @default(now())
+
+  covers Article[]
+}
+
+enum ArticleCategory {
+  match_reports
+  club_updates
+  team_academy
+  announcements
+}
+
+enum ArticleStatus {
+  draft
+  published
+}
+
+model Article {
+  id           String          @id @default(cuid())
+  slug         String          @unique
+  title        String
+  excerpt      String          @default("")
+  // Markdown. Images inside it point to /media/<id>.
+  body         String          @default("")
+  category     ArticleCategory
+  status       ArticleStatus   @default(draft)
+  featured     Boolean         @default(false)
+  authorName   String
+  coverImageId String?
+  coverImage   MediaImage?     @relation(fields: [coverImageId], references: [id], onDelete: SetNull)
+  readMinutes  Int             @default(1)
+  publishedAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([status, publishedAt])
+}
