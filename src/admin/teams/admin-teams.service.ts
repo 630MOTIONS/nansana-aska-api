@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import type { AuthUser } from "../../auth/auth.types.js";
 import { isUniqueViolation } from "../../common/errors.js";
+import { detectImageType, MAX_LOGO_BYTES } from "../../common/image.js";
 import { slugify } from "../../common/slug.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import { CreateTeamDto } from "./dto/create-team.dto.js";
@@ -17,7 +18,30 @@ const teamSelect = {
   name: true,
   squad: true,
   isOurs: true,
+  logo: { select: { updatedAt: true } },
 } as const;
+
+type TeamRow = {
+  slug: string;
+  name: string;
+  squad: "men" | "women";
+  isOurs: boolean;
+  logo: { updatedAt: Date } | null;
+};
+
+// logoUrl is relative to the API. The updatedAt value in it changes whenever
+// the logo is replaced, which keeps browser caches fresh.
+function toDto(row: TeamRow) {
+  return {
+    slug: row.slug,
+    name: row.name,
+    squad: row.squad,
+    isOurs: row.isOurs,
+    logoUrl: row.logo
+      ? `/teams/${row.slug}/logo?v=${row.logo.updatedAt.getTime()}`
+      : null,
+  };
+}
 
 @Injectable()
 export class AdminTeamsService {
@@ -25,12 +49,22 @@ export class AdminTeamsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  list(squad?: "men" | "women") {
-    return this.prisma.team.findMany({
+  async list(squad?: "men" | "women") {
+    const rows = await this.prisma.team.findMany({
       where: { squad },
       orderBy: [{ isOurs: "desc" }, { name: "asc" }],
       select: teamSelect,
     });
+    return rows.map(toDto);
+  }
+
+  private async get(slug: string) {
+    const row = await this.prisma.team.findUnique({
+      where: { slug },
+      select: teamSelect,
+    });
+    if (!row) throw new NotFoundException("Team not found.");
+    return toDto(row);
   }
 
   async create(dto: CreateTeamDto, actor: AuthUser) {
@@ -48,23 +82,23 @@ export class AdminTeamsService {
     }
 
     try {
-      const team = await this.prisma.team.create({
+      await this.prisma.team.create({
         data: {
           slug,
           name: dto.name,
           squad: dto.squad,
           isOurs: dto.isOurs ?? false,
         },
-        select: teamSelect,
       });
-      this.logger.log(`${actor.email} created team ${slug}`);
-      return team;
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new ConflictException(`A team with the slug "${slug}" already exists.`);
       }
       throw error;
     }
+
+    this.logger.log(`${actor.email} created team ${slug}`);
+    return this.get(slug);
   }
 
   async update(slug: string, dto: UpdateTeamDto, actor: AuthUser) {
@@ -78,13 +112,55 @@ export class AdminTeamsService {
       throw new BadRequestException("Nothing to change.");
     }
 
-    const team = await this.prisma.team.update({
+    await this.prisma.team.update({
       where: { slug },
       data: { name: dto.name, isOurs: dto.isOurs },
-      select: teamSelect,
     });
     this.logger.log(`${actor.email} updated team ${slug}`);
-    return team;
+    return this.get(slug);
+  }
+
+  async setLogo(
+    slug: string,
+    file: { buffer: Buffer; size: number } | undefined,
+    actor: AuthUser,
+  ) {
+    if (!file) throw new BadRequestException("Choose an image file to upload.");
+    if (file.size > MAX_LOGO_BYTES) {
+      throw new BadRequestException("The logo must be smaller than 500 KB.");
+    }
+
+    const contentType = detectImageType(file.buffer);
+    if (!contentType) {
+      throw new BadRequestException("The logo must be a PNG, JPEG or WebP image.");
+    }
+
+    const team = await this.prisma.team.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!team) throw new NotFoundException("Team not found.");
+
+    const data = new Uint8Array(file.buffer);
+    await this.prisma.teamLogo.upsert({
+      where: { teamId: team.id },
+      update: { contentType, data, size: file.size },
+      create: { teamId: team.id, contentType, data, size: file.size },
+    });
+
+    this.logger.log(`${actor.email} set the logo of team ${slug}`);
+    return this.get(slug);
+  }
+
+  async removeLogo(slug: string, actor: AuthUser) {
+    const team = await this.prisma.team.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!team) throw new NotFoundException("Team not found.");
+
+    await this.prisma.teamLogo.deleteMany({ where: { teamId: team.id } });
+    this.logger.log(`${actor.email} removed the logo of team ${slug}`);
   }
 
   async remove(slug: string, actor: AuthUser) {

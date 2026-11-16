@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -59,10 +54,21 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  logo         TeamLogo?
   competitions CompetitionTeam[]
   homeMatches  Match[]           @relation("HomeMatches")
   awayMatches  Match[]           @relation("AwayMatches")
   adjustments  PointsAdjustment[]
+}
+
+// The logo image, kept in its own table so listing teams never loads the bytes.
+model TeamLogo {
+  teamId      String   @id
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  contentType String
+  data        Bytes
+  size        Int
+  updatedAt   DateTime @updatedAt
 }
 
 // One competition in one season, for example "FAU Futsal Super League 2026/27".

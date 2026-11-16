@@ -7,6 +7,7 @@ import { EnquiriesModule } from "./enquiries/enquiries.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { MatchesModule } from "./matches/matches.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
+import { TeamsModule } from "./teams/teams.module.js";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PrismaModule } from "./prisma/prisma.module.js";
     HealthModule,
     CompetitionsModule,
     MatchesModule,
+    TeamsModule,
   ],
 })
 export class AppModule {}
