@@ -16,14 +16,18 @@ async function bootstrap() {
 
   // Only the website may call this API from a browser.
   // FRONTEND_ORIGIN can hold several origins separated by commas.
+  const origins = (process.env.FRONTEND_ORIGIN || 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: (process.env.FRONTEND_ORIGIN ?? "http://localhost:3000")
-      .split(",")
-      .map((origin) => origin.trim()),
-    methods: ["GET", "POST"],
+    origin: origins,
+    methods: ['GET', 'POST'],
   });
 
-  await app.listen(process.env.PORT ?? 3001);
+  const port = Number(process.env.PORT) || 3001;
+  await app.listen(port, '0.0.0.0');
 }
 
 void bootstrap();
