@@ -7,8 +7,10 @@ import { CompetitionsModule } from "./competitions/competitions.module.js";
 import { EnquiriesModule } from "./enquiries/enquiries.module.js";
 import { GalleryModule } from "./gallery/gallery.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { HighlightsModule } from "./highlights/highlights.module.js";
 import { MatchesModule } from "./matches/matches.module.js";
 import { MediaModule } from "./media/media.module.js";
+import { PeopleModule } from "./people/people.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { TeamsModule } from "./teams/teams.module.js";
 
@@ -26,6 +28,8 @@ import { TeamsModule } from "./teams/teams.module.js";
     MediaModule,
     ArticlesModule,
     GalleryModule,
+    PeopleModule,
+    HighlightsModule,
   ],
 })
 export class AppModule {}

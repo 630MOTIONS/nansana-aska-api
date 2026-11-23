@@ -247,3 +247,104 @@ model GalleryPhoto {
 
   @@index([published, createdAt])
 }
+
+enum PlayerPosition {
+  goalkeeper
+  defender
+  winger
+  pivot
+}
+
+enum PlayerRole {
+  captain
+  vice_captain
+}
+
+enum PreferredFoot {
+  right
+  left
+  both
+}
+
+enum StaffGroup {
+  technical
+  management
+}
+
+model Player {
+  id          String         @id @default(cuid())
+  name        String
+  squad       Squad
+  number      Int?
+  position    PlayerPosition
+  role        PlayerRole?
+  foot        PreferredFoot?
+  appearances Int?
+  goals       Int?
+  cleanSheets Int?
+  saves       Int?
+  photoId     String?
+  published   Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([squad, published])
+}
+
+model StaffMember {
+  id        String     @id @default(cuid())
+  name      String
+  // The role line, for example "Head coach — Men's senior".
+  title     String
+  // A small label above the name, for example "Tactical director".
+  kicker    String?
+  bio       String     @default("")
+  group     StaffGroup @default(technical)
+  // Lower numbers are shown first.
+  sortOrder Int        @default(0)
+  photoId   String?
+  published Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([group, published, sortOrder])
+}
+
+enum VideoCategory {
+  match
+  goals
+  recaps
+  training
+  behind
+  interviews
+}
+
+model Highlight {
+  id            String        @id @default(cuid())
+  title         String
+  description   String        @default("")
+  category      VideoCategory
+  // Where to watch: a YouTube, Facebook, TikTok... address.
+  videoUrl      String
+  // Set when videoUrl is a YouTube link. It lets the site play the video in
+  // the page and fetch its thumbnail.
+  youtubeId     String?
+  // The thumbnail is a stored photo (a plain id, like player photos).
+  thumbnailId   String?
+  // true when the thumbnail was fetched from YouTube automatically.
+  thumbnailAuto Boolean       @default(false)
+  kicker        String?
+  badge         String?
+  duration      String?
+  // The date shown on the site. Defaults to the day it is added.
+  date          DateTime      @default(now())
+  spotlight     Boolean       @default(false)
+  featured      Boolean       @default(false)
+  // Optional: the slug of the match this video is about (for recap scores).
+  matchSlug     String?
+  published     Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([published, date])
+}
