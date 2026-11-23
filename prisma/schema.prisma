@@ -172,8 +172,8 @@ model Session {
   @@index([expiresAt])
 }
 
-// A photo, resized and converted to WebP on upload. Used as an article cover
-// or inside an article's text.
+// A photo, resized and converted to WebP on upload. Used as an article cover,
+// inside an article's text, or as a gallery photo.
 model MediaImage {
   id          String   @id @default(cuid())
   contentType String
@@ -183,7 +183,8 @@ model MediaImage {
   height      Int
   createdAt   DateTime @default(now())
 
-  covers Article[]
+  covers        Article[]
+  galleryPhotos GalleryPhoto[]
 }
 
 enum ArticleCategory {
@@ -217,4 +218,32 @@ model Article {
   updatedAt    DateTime        @updatedAt
 
   @@index([status, publishedAt])
+}
+
+enum GalleryCategory {
+  match_day
+  training
+  squads
+  supporters
+  events
+}
+
+// A photo in the public gallery. New uploads start hidden (published = false)
+// until someone has given them a title and published them.
+model GalleryPhoto {
+  id        String          @id @default(cuid())
+  imageId   String
+  image     MediaImage      @relation(fields: [imageId], references: [id])
+  title     String          @default("Untitled photo")
+  caption   String          @default("")
+  category  GalleryCategory
+  // A short tag shown on the card, for example "Matchday 8".
+  meta      String?
+  wide      Boolean         @default(false)
+  featured  Boolean         @default(false)
+  published Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([published, createdAt])
 }

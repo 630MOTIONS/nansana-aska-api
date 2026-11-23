@@ -39,14 +39,18 @@ export class MediaService {
     });
   }
 
-  // Deletes a photo only when no article uses it as a cover or inside its text.
+  // Deletes a photo only when nothing uses it: not an article cover, not inside
+  // an article's text, and not in the gallery.
   async removeIfUnused(id: string) {
-    const uses = await this.prisma.article.count({
-      where: {
-        OR: [{ coverImageId: id }, { body: { contains: `/media/${id}` } }],
-      },
-    });
-    if (uses === 0) {
+    const [articles, gallery] = await Promise.all([
+      this.prisma.article.count({
+        where: {
+          OR: [{ coverImageId: id }, { body: { contains: `/media/${id}` } }],
+        },
+      }),
+      this.prisma.galleryPhoto.count({ where: { imageId: id } }),
+    ]);
+    if (articles + gallery === 0) {
       await this.prisma.mediaImage.deleteMany({ where: { id } });
     }
   }

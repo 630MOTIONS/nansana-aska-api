@@ -5,6 +5,7 @@ import { ArticlesModule } from "./articles/articles.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { CompetitionsModule } from "./competitions/competitions.module.js";
 import { EnquiriesModule } from "./enquiries/enquiries.module.js";
+import { GalleryModule } from "./gallery/gallery.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { MatchesModule } from "./matches/matches.module.js";
 import { MediaModule } from "./media/media.module.js";
@@ -24,6 +25,7 @@ import { TeamsModule } from "./teams/teams.module.js";
     TeamsModule,
     MediaModule,
     ArticlesModule,
+    GalleryModule,
   ],
 })
 export class AppModule {}

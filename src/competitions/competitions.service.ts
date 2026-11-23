@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { calculateStandings } from './standings.js';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { calculateStandings } from "./standings.js";
+
+type Squad = "men" | "women";
 
 @Injectable()
 export class CompetitionsService {
@@ -8,15 +10,48 @@ export class CompetitionsService {
 
   list() {
     return this.prisma.competition.findMany({
-      orderBy: [{ season: 'desc' }, { name: 'asc' }],
+      orderBy: [{ season: "desc" }, { name: "asc" }],
       select: { slug: true, name: true, season: true, squad: true },
     });
+  }
+
+  // The competition the public table shows for a squad: of the competitions
+  // that have one of our teams, the one with the most recent final result.
+  // A new season therefore takes over once its first result is entered, and
+  // until then the previous table stays. Competitions with no results are
+  // ordered by when they were created.
+  async currentSlug(squad: Squad): Promise<string | null> {
+    const competitions = await this.prisma.competition.findMany({
+      where: { squad, teams: { some: { team: { isOurs: true } } } },
+      select: {
+        slug: true,
+        createdAt: true,
+        matches: {
+          where: { status: "final" },
+          orderBy: { kickoffAt: "desc" },
+          take: 1,
+          select: { kickoffAt: true },
+        },
+      },
+    });
+    if (competitions.length === 0) return null;
+
+    const latestResult = (item: (typeof competitions)[number]) =>
+      item.matches[0]?.kickoffAt.getTime() ?? 0;
+
+    competitions.sort(
+      (a, b) =>
+        latestResult(b) - latestResult(a) ||
+        b.createdAt.getTime() - a.createdAt.getTime(),
+    );
+    return competitions[0].slug;
   }
 
   async standings(slug: string) {
     const competition = await this.prisma.competition.findUnique({
       where: { slug },
       select: {
+        id: true,
         slug: true,
         name: true,
         season: true,
@@ -24,12 +59,19 @@ export class CompetitionsService {
         pointsForDraw: true,
         teams: {
           select: {
-            team: { select: { slug: true, name: true, isOurs: true } },
+            team: {
+              select: {
+                slug: true,
+                name: true,
+                isOurs: true,
+                logo: { select: { updatedAt: true } },
+              },
+            },
           },
         },
         matches: {
           where: {
-            status: 'final',
+            status: "final",
             homeScore: { not: null },
             awayScore: { not: null },
           },
@@ -48,8 +90,25 @@ export class CompetitionsService {
 
     if (!competition) return null;
 
+    const teams = competition.teams.map(({ team }) => ({
+      slug: team.slug,
+      name: team.name,
+      isOurs: team.isOurs,
+    }));
+
+    // The logo address changes whenever a logo is replaced, so browsers never
+    // keep showing an old one.
+    const logoUrls = new Map<string, string | null>(
+      competition.teams.map(({ team }): [string, string | null] => [
+        team.slug,
+        team.logo
+          ? `/teams/${team.slug}/logo?v=${team.logo.updatedAt.getTime()}`
+          : null,
+      ]),
+    );
+
     const rows = calculateStandings(
-      competition.teams.map((entry) => entry.team),
+      teams,
       competition.matches.flatMap((match) =>
         match.homeScore !== null && match.awayScore !== null
           ? [
@@ -69,13 +128,23 @@ export class CompetitionsService {
       { win: competition.pointsForWin, draw: competition.pointsForDraw },
     );
 
+    const latest = await this.prisma.match.aggregate({
+      where: { competitionId: competition.id, status: "final" },
+      _max: { matchday: true },
+    });
+
     return {
       competition: {
         slug: competition.slug,
         name: competition.name,
         season: competition.season,
       },
-      rows,
+      // The highest matchday with a final result, for "last updated after".
+      lastMatchday: latest._max.matchday,
+      rows: rows.map((row) => ({
+        ...row,
+        team: { ...row.team, logoUrl: logoUrls.get(row.team.slug) ?? null },
+      })),
     };
   }
 }
