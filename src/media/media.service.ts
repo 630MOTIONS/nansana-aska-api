@@ -75,10 +75,10 @@ export class MediaService {
   }
 
   // Deletes a photo (and its smaller copies) only when nothing uses it: not an
-  // article cover or text, the gallery, a player or staff photo, or a video
-  // thumbnail.
+  // article cover or text, the gallery, a player or staff photo, a video
+  // thumbnail, or a page image.
   async removeIfUnused(id: string) {
-    const [articles, gallery, players, staff, videos] = await Promise.all([
+    const [articles, gallery, players, staff, videos, pages] = await Promise.all([
       this.prisma.article.count({
         where: {
           OR: [{ coverImageId: id }, { body: { contains: `/media/${id}` } }],
@@ -88,8 +88,9 @@ export class MediaService {
       this.prisma.player.count({ where: { photoId: id } }),
       this.prisma.staffMember.count({ where: { photoId: id } }),
       this.prisma.highlight.count({ where: { thumbnailId: id } }),
+      this.prisma.siteImage.count({ where: { imageId: id } }),
     ]);
-    if (articles + gallery + players + staff + videos === 0) {
+    if (articles + gallery + players + staff + videos + pages === 0) {
       await this.prisma.mediaVariant.deleteMany({ where: { imageId: id } });
       await this.prisma.mediaImage.deleteMany({ where: { id } });
     }

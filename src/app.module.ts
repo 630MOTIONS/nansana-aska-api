@@ -12,6 +12,7 @@ import { MatchesModule } from "./matches/matches.module.js";
 import { MediaModule } from "./media/media.module.js";
 import { PeopleModule } from "./people/people.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
+import { SiteImagesModule } from "./site-images/site-images.module.js";
 import { TeamsModule } from "./teams/teams.module.js";
 
 @Module({
@@ -30,6 +31,7 @@ import { TeamsModule } from "./teams/teams.module.js";
     GalleryModule,
     PeopleModule,
     HighlightsModule,
+    SiteImagesModule,
   ],
 })
 export class AppModule {}

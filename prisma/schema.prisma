@@ -363,3 +363,12 @@ model MediaVariant {
 
   @@unique([imageId, width])
 }
+
+// A photo shown in a fixed place on the website (for example the About page
+// hero). The place is the key. The photo is a plain id, like other references.
+model SiteImage {
+  key       String   @id
+  imageId   String
+  alt       String   @default("")
+  updatedAt DateTime @updatedAt
+}

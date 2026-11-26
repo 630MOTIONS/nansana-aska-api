@@ -6,6 +6,7 @@ import { HighlightsModule } from "../highlights/highlights.module.js";
 import { MediaModule } from "../media/media.module.js";
 import { PeopleModule } from "../people/people.module.js";
 import { PrismaModule } from "../prisma/prisma.module.js";
+import { SiteImagesModule } from "../site-images/site-images.module.js";
 import { AdminArticlesController } from "./articles/admin-articles.controller.js";
 import { AdminMediaController } from "./articles/admin-media.controller.js";
 import { AdminCompetitionsController } from "./competitions/admin-competitions.controller.js";
@@ -16,6 +17,7 @@ import { AdminMatchesController } from "./matches/admin-matches.controller.js";
 import { AdminMatchesService } from "./matches/admin-matches.service.js";
 import { AdminPlayersController } from "./people/admin-players.controller.js";
 import { AdminStaffController } from "./people/admin-staff.controller.js";
+import { AdminSiteImagesController } from "./site-images/admin-site-images.controller.js";
 import { AdminTeamsController } from "./teams/admin-teams.controller.js";
 import { AdminTeamsService } from "./teams/admin-teams.service.js";
 
@@ -28,6 +30,7 @@ import { AdminTeamsService } from "./teams/admin-teams.service.js";
     GalleryModule,
     PeopleModule,
     HighlightsModule,
+    SiteImagesModule,
   ],
   controllers: [
     AdminTeamsController,
@@ -39,6 +42,7 @@ import { AdminTeamsService } from "./teams/admin-teams.service.js";
     AdminPlayersController,
     AdminStaffController,
     AdminHighlightsController,
+    AdminSiteImagesController,
   ],
   providers: [
     AdminTeamsService,
