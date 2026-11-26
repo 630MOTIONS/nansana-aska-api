@@ -11,18 +11,29 @@ export class MediaService {
     if (!file) throw new BadRequestException("Choose an image file to upload.");
 
     const processed = await processPhoto(file.buffer);
-    const bytes = new Uint8Array(processed.data);
 
     const row = await this.prisma.mediaImage.create({
       data: {
         contentType: processed.contentType,
-        data: bytes,
+        data: new Uint8Array(processed.data),
         size: processed.size,
         width: processed.width,
         height: processed.height,
       },
       select: { id: true, width: true, height: true },
     });
+
+    if (processed.variants.length > 0) {
+      await this.prisma.mediaVariant.createMany({
+        data: processed.variants.map((variant) => ({
+          imageId: row.id,
+          width: variant.width,
+          contentType: "image/webp",
+          data: new Uint8Array(variant.data),
+          size: variant.size,
+        })),
+      });
+    }
 
     return {
       id: row.id,
@@ -32,15 +43,40 @@ export class MediaService {
     };
   }
 
-  get(id: string) {
+  // With a width, returns the smallest stored copy that is at least that wide.
+  // Photos uploaded before the smaller copies existed return the main photo.
+  async get(id: string, width?: number) {
+    const main = await this.prisma.mediaImage.findUnique({
+      where: { id },
+      select: { width: true },
+    });
+    if (!main) return null;
+
+    if (width && width < main.width) {
+      const widths = await this.prisma.mediaVariant.findMany({
+        where: { imageId: id },
+        orderBy: { width: "asc" },
+        select: { width: true },
+      });
+      const pick = widths.find((variant) => variant.width >= width);
+      if (pick) {
+        const variant = await this.prisma.mediaVariant.findUnique({
+          where: { imageId_width: { imageId: id, width: pick.width } },
+          select: { contentType: true, data: true },
+        });
+        if (variant) return variant;
+      }
+    }
+
     return this.prisma.mediaImage.findUnique({
       where: { id },
       select: { contentType: true, data: true },
     });
   }
 
-  // Deletes a photo only when nothing uses it: not an article cover or text,
-  // the gallery, a player or staff photo, or a video thumbnail.
+  // Deletes a photo (and its smaller copies) only when nothing uses it: not an
+  // article cover or text, the gallery, a player or staff photo, or a video
+  // thumbnail.
   async removeIfUnused(id: string) {
     const [articles, gallery, players, staff, videos] = await Promise.all([
       this.prisma.article.count({
@@ -54,6 +90,7 @@ export class MediaService {
       this.prisma.highlight.count({ where: { thumbnailId: id } }),
     ]);
     if (articles + gallery + players + staff + videos === 0) {
+      await this.prisma.mediaVariant.deleteMany({ where: { imageId: id } });
       await this.prisma.mediaImage.deleteMany({ where: { id } });
     }
   }

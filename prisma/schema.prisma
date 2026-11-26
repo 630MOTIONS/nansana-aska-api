@@ -348,3 +348,18 @@ model Highlight {
 
   @@index([published, date])
 }
+
+// Smaller copies of a stored photo, so cards load a file that fits them. The
+// main photo stays in MediaImage. Linked by a plain id like other photo
+// references; the media service deletes the copies together with their photo.
+model MediaVariant {
+  id          String   @id @default(cuid())
+  imageId     String
+  width       Int
+  contentType String   @default("image/webp")
+  data        Bytes
+  size        Int
+  createdAt   DateTime @default(now())
+
+  @@unique([imageId, width])
+}

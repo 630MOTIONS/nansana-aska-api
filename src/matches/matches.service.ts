@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client.js';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { ListMatchesDto } from './dto/list-matches.dto.js';
+import { Injectable } from "@nestjs/common";
+import { Prisma } from "../generated/prisma/client.js";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { ListMatchesDto } from "./dto/list-matches.dto.js";
 
 const matchInclude = {
   competition: {
@@ -38,15 +38,18 @@ export class MatchesService {
   async list(query: ListMatchesDto) {
     const where: Prisma.MatchWhereInput = {
       competition: { slug: query.competition, squad: query.squad },
-      status:
-        query.view === 'upcoming'
-          ? { in: ['scheduled', 'live'] }
-          : query.view === 'results'
-            ? 'final'
-            : undefined,
+      ...(query.view === "upcoming"
+        ? {
+            OR: [
+              { status: "live" },
+              { status: "scheduled", kickoffAt: { gte: new Date() } },
+            ],
+          }
+        : query.view === "results"
+          ? { status: "final" }
+          : {}),
     };
-    const direction =
-      query.view === 'results' ? ('desc' as const) : ('asc' as const);
+    const direction = query.view === "results" ? ("desc" as const) : ("asc" as const);
 
     const matches = await this.prisma.match.findMany({
       where,
